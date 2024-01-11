@@ -1,0 +1,14 @@
+.DraftEditor-root {
+  font-weight: 400;
+  font-size: 18px;
+  min-height: 200px;
+  border: 1px solid rgba(0,0,0,0.15);
+  cursor: text;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 2em;
+  background: #fefefe;
+}
+.active {
+  background-color: #e5e7eb;
+}
