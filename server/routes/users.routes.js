@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { loginController } from "../controllers/users.controllers.js";
+import { oauthController } from "../controllers/users.controllers.js";
 
 const usersRoutes = Router()
 
-usersRoutes.post('/login', loginController)
+usersRoutes.get('/oauth/google', oauthController)
 
 export default usersRoutes

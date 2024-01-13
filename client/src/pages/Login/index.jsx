@@ -1,40 +1,46 @@
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 import { Button, Divider, Form, Input, Image } from "antd";
 import FormItem from "antd/es/form/FormItem";
-import { useGoogleLogin } from "@react-oauth/google";
 import googleIcon from "../../assets/images/google.svg";
-import { authLogin } from "../../redux/userSlice";
+
+const getGoogleAuthUrl = () => {
+  const { VITE_GOOGLE_CLIENT_ID, VITE_REDIRECT_URI } = import.meta.env;
+  const url = "https://accounts.google.com/o/oauth2/v2/auth";
+  const query = {
+    client_id: VITE_GOOGLE_CLIENT_ID,
+    redirect_uri: VITE_REDIRECT_URI,
+    response_type: "code",
+    scope: [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile",
+    ].join(" "),
+    prompt: "consent",
+  };
+  const queryString = new URLSearchParams(query).toString();
+  return `${url}?${queryString}`;
+};
+
+const googleOauthUrl = getGoogleAuthUrl();
 
 const Login = () => {
   const [form] = Form.useForm();
-  const dispatch = useDispatch();
+  // eslint-disable-next-line no-unused-vars
+  const [searchPrams, setSearchParams] = useSearchParams();
+  const accessToken = searchPrams.get("access_token");
   const navigate = useNavigate();
 
-  const login = useGoogleLogin({
-    onSuccess: async (response) => {
-      try {
-        const res = await axios.get(
-          `https://www.googleapis.com/oauth2/v3/userinfo`,
-          {
-            headers: {
-              Authorization: `Bearer ${response.access_token}`,
-            },
-          }
-        );
-        // console.log(res);
-        dispatch(authLogin({
-          name: res.data.name,
-          email: res.data.email,
-          avatar: res.data.picture
-        }))
-        navigate("/")
-      } catch (err) {
-        console.log(err);
-      }
+  useEffect(() => {
+    if (accessToken) {
+      localStorage.setItem("access_token", accessToken);
+      const userInfo = jwtDecode(accessToken);
+      localStorage.setItem("name", userInfo.name);
+      localStorage.setItem("email", userInfo.email);
+      localStorage.setItem("avatar", userInfo.avatar);
+      navigate("/");
     }
-  });
+  }, [accessToken, navigate]);
 
   return (
     <div
@@ -59,13 +65,13 @@ const Login = () => {
         </Form.Item>
       </Form>
       <Divider style={{ color: "#9ca3af", fontWeight: "400" }}>OR</Divider>
-      <div
+      <Link
+        to={googleOauthUrl}
         className="border py-2 rounded-md justify-center flex items-center gap-x-4 cursor-pointer hover:shadow"
-        onClick={() => login()}
       >
         <Image src={googleIcon} width={28} preview={false} />
         <span className="text-base">Sign in with Google</span>
-      </div>
+      </Link>
     </div>
   );
 };

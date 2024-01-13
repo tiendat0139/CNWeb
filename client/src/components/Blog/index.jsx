@@ -1,18 +1,47 @@
-import { useState } from "react";
+import axios from "axios";
+import { useEffect, useRef, useState } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 import { Avatar, Image, Input, Modal } from "antd";
 import { IoIosMore } from "react-icons/io";
 import { BiSolidLike } from "react-icons/bi";
 import { AiOutlineLike, AiOutlineComment } from "react-icons/ai";
 import { TbShare3 } from "react-icons/tb";
-import BlogImage from "../../assets/images/blog-image.jpg";
+import TimeAgo from "react-timeago";
+import buildFormatter from "react-timeago/lib/formatters/buildFormatter";
+import parse from "html-react-parser";
 import Button from "../Button";
 import CommentItem from "./CommentItem";
 
-const Blog = () => {
+const timeAgoFormatString = {
+  prefixAgo: null,
+  prefixFromNow: null,
+  suffixAgo: 'ago',
+  suffixFromNow: 'from now',
+  seconds: 'less than a minute',
+  minute: 'about a minute',
+  minutes: '%d minutes',
+  hour: 'about an hour',
+  hours: '%d hours',
+  day: 'a day',
+  days: '%d days',
+  month: 'about a month',
+  months: '%d months',
+  year: 'about a year',
+  years: '%d years',
+  wordSeparator: ' '
+};
+
+const formatter = buildFormatter(timeAgoFormatString);
+
+const Blog = ({ blog }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [htmlContent, setHtmlContent] = useState("");
   const [comments, setComments] = useState([]);
   const [commentInput, setCommentInput] = useState("");
+  const authUserAvatar = localStorage.getItem("avatar");
+
+  const endOfCommentRef = useRef(null);
 
   const handleOk = () => {
     setIsModalOpen(false);
@@ -20,20 +49,42 @@ const Blog = () => {
   const handleCancel = () => {
     setIsModalOpen(false);
   };
+  const handleDeleteComment = (commentId) => {
+    const newComment = comments.filter(comment => comment._id != commentId)
+    setComments(newComment)
+  }
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = async (e) => {
     if (e.keyCode == 13 && commentInput != "") {
-      setComments([
-        ...comments,
-        {
-          avatar: "",
-          content: commentInput,
-          time: "Just now",
-        },
-      ]);
-      setCommentInput("");
+      const res = await axios.post("/comments/create", {
+        blogId: blog._id,
+        content: commentInput
+      })
+      console.log(res.data.comment)
+      if(res.status == 200) {
+        setComments([
+          res.data.comment,
+          ...comments,
+        ]);
+        setCommentInput("");
+      }
     }
   };
+
+  useEffect(() => {
+    setHtmlContent(JSON.parse(blog.content));
+  }, [blog.content]);
+
+  useEffect(() => {
+    const getComments = async () => {
+      const res = await axios.get(`/comments/${blog._id}`);
+      if (res.status == 200) {
+        setComments(res.data.comments);
+      }
+    };
+    getComments();
+  }, [blog._id]);
+
 
   return (
     <div
@@ -42,46 +93,46 @@ const Blog = () => {
     >
       {/* Card Header */}
       <div className="px-4 pt-4 flex justify-between items-center gap-x-2">
-        <Avatar size={40} className="bg-[#7265e6]">
-          D
-        </Avatar>
+        <Avatar size={40} src={blog.author.avatar} />
         <div className="flex flex-col grow">
           <Link to="" className="font-medium text-base">
-            Nguyen Tien Dat
+            {blog.author.name}
           </Link>
-          <span className="font-light text-sm">23 hours ago</span>
+          <TimeAgo
+            className="font-light text-sm"
+            date={blog.createdAt}
+            formatter={formatter}
+          />
         </div>
         <IoIosMore className="cursor-pointer" size={20} />
       </div>
 
       {/* Card Body */}
       <div>
-        {/* Blog text */}
-        <div className="px-4 mt-4">
-          <p className="text-base font-light leading-5">
-            Chẳng cần những chuyến đi ra nước ngoài, ở nước ta cũng cũng có
-            những bãi biển đẹp như mơ rất được yêu thích. Một trong số đó là
-            vịnh Ninh Vân với biển xanh, mây trắng, mang theo vẻ hoang sơ nhưng
-            đẹp đến nao lòng.
-          </p>
-        </div>
+        {/* Blog content */}
+        <div className="px-4 mt-4 text-lg font-light">{parse(htmlContent)}</div>
+
         {/* Blog Image*/}
-        <div className="mt-4">
-          <Image src={BlogImage} width={590} />
-        </div>
+        {blog.images.length > 0 && (
+          <div className="mt-4">
+            <Image src={blog.images[0].url} width={590} />
+          </div>
+        )}
+
         {/* Footer */}
         <div className="px-4">
           <div className="flex justify-between items-center">
             <span>
               <BiSolidLike className="inline-block" size={20} color="#1877F2" />
               <span className="text-[15px] ml-1 font-thin text-gray-700">
-                75
+                1
               </span>
             </span>
             <span className="text-[15px] ml-1 font-thin text-gray-700">
-              3 comments
+              {comments.length} comments
             </span>
           </div>
+
           {/* Reaction button */}
           <div
             className="py-1"
@@ -109,19 +160,25 @@ const Blog = () => {
               onCancel={handleCancel}
               footer={null}
             >
-              {comments.map((comment, index) => (
-                <CommentItem
-                  key={index}
-                  avatar={comment.avatar}
-                  content={comment.content}
-                  time={comment.time}
-                />
-              ))}
+              <div className="h-[300px] mt-6 overflow-auto">
+                {comments.map((comment, index) => (
+                  <CommentItem
+                    key={index}
+                    comment = {comment}
+                    isAuthor={blog.isAuthor}
+                    blogId={blog._id}
+                    handleDeleteSuccess={handleDeleteComment}
+                  />
+                ))}
+                <span ref={endOfCommentRef}></span>
+              </div>
               <div className="flex gap-x-3 mt-8">
                 <div>
-                  <Avatar className="bg-[#7265e6] gap-x-3 grow" size={32}>
-                    D
-                  </Avatar>
+                  <Avatar
+                    src={authUserAvatar}
+                    className="gap-x-3 grow"
+                    size={32}
+                  />
                 </div>
                 <Input
                   rows={2}
@@ -139,6 +196,10 @@ const Blog = () => {
       </div>
     </div>
   );
+};
+
+Blog.propTypes = {
+  blog: PropTypes.object
 };
 
 export default Blog;

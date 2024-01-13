@@ -1,60 +1,88 @@
-import { useState } from "react";
-import { Editor, EditorState } from "draft-js";
-import { RichUtils } from "draft-js";
+import { useEffect, useRef, useState } from "react";
+import PropTypes from "prop-types";
+import { Editor, EditorState, RichUtils,  convertToRaw } from "draft-js";
+import draftToHtml from 'draftjs-to-html';
 import "draft-js/dist/Draft.css";
 import "./index.css";
 
-const RichTextEditor = () => {
+const RichTextEditor = ({ setEditorValue }) => {
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
-  const [activeUtil, setActiveUtil] = useState("");
+  const editorRef = useRef(null);
+  const [utilState, setUtilState] = useState({
+    bold: false,
+    italic: false,
+  });
 
-  const toggleUtils = (util) => {
-    if(activeUtil == util){
-      setActiveUtil("")
-    } else {
-      setActiveUtil(util)
-    }
-  }
   const handleBoldClick = (e) => {
     e.preventDefault();
-    toggleUtils("BOLD")
+    setUtilState({ ...utilState, bold: !utilState.bold });
     setEditorState(RichUtils.toggleInlineStyle(editorState, "BOLD"));
   };
   const handleItalicClick = (e) => {
     e.preventDefault();
-    toggleUtils("ITALIC")
+    setUtilState({ ...utilState, italic: !utilState.italic });
     setEditorState(RichUtils.toggleInlineStyle(editorState, "ITALIC"));
   };
 
+  const handleEditorChange = (editorState) => {
+    setEditorState(editorState);
+    const html = draftToHtml(convertToRaw(editorState.getCurrentContent()));
+    const jsonValue = JSON.stringify(html)
+    setEditorValue(jsonValue);
+  }
+
+  useEffect(() => {
+    if(editorRef.current){
+      editorRef.current.focus();
+    }
+  }, [])
+
   return (
-    <div className="grow">
-      <div className="px-2 flex text-base text-gray-500">
+    <div
+      className="grow rounded-lg"
+      style={{
+        border: "1px solid rgba(0,0,0,0.15)",
+      }}
+    >
+      <div className="px-4">
         <div
-          className={`
-            cursor-pointer px-4 py-[2px] hover:bg-gray-100 mt-5
-            ${activeUtil == "BOLD" && "active"}`
-          }
-          onMouseDown={handleBoldClick}
+          className="flex text-base text-gray-400 py-2"
+          style={{
+            borderBottom: "1px solid rgba(0,0,0,0.15)",
+          }}
         >
-          Bold
-        </div>
-        <div
-          className={`
-            cursor-pointer px-4 py-[2px] hover:bg-gray-100 mt-5
-            ${activeUtil == "ITALIC" && "active"}`
-          }
-          onMouseDown={handleItalicClick}
-        >
-          Italic
+          <div
+            className={`cursor-pointer ${
+              utilState.bold && "active"
+            }`}
+            onMouseDown={handleBoldClick}
+          >
+            Bold
+          </div>
+          <div
+            className={`cursor-pointer ml-4 ${
+              utilState.italic && "active"
+            }`}
+            onMouseDown={handleItalicClick}
+          >
+            Italic
+          </div>
         </div>
       </div>
       <Editor
+        style={{maxWidth: "200px"}}
+        ref={editorRef}
         editorState={editorState}
         placeholder="What's on your mind"
-        onChange={(editorState) => setEditorState(editorState)}
+        onChange={(editorState) => handleEditorChange(editorState)}
       />
     </div>
   );
 };
+
+RichTextEditor.propTypes = {
+  setEditorValue: PropTypes.func,
+};
+
 
 export default RichTextEditor;

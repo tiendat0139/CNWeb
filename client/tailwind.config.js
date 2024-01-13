@@ -9,6 +9,7 @@ export default {
     extend: {},
     colors: {
       'primary': "#1877F2",
+      'primary-hover': "rgba(24, 199, 242, 0.1)",
       white: colors.white,
       gray: colors.gray,
       slate: colors.slate

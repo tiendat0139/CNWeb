@@ -2,13 +2,16 @@
   font-weight: 400;
   font-size: 18px;
   min-height: 200px;
-  border: 1px solid rgba(0,0,0,0.15);
+  max-width: 420px;
   cursor: text;
-  padding: 16px;
+  padding: 8px 16px;
   border-radius: 8px;
   margin-bottom: 2em;
   background: #fefefe;
 }
 .active {
-  background-color: #e5e7eb;
+  color: #1877F2;
+}
+.RichEditor-editor .public-DraftStyleDefault-pre pre {
+  white-space: normal;
 }
